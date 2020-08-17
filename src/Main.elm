@@ -351,7 +351,6 @@ update msg model =
             )
 
 
---path1 : List (Float, Float) -> 
 path1 points =
     case points of
         [] -> Canvas.path (0, 0) []
@@ -556,7 +555,7 @@ view model =
                         []
                         [ li [] [ code "+", text " : addition" ]
                         , li [] [ code "-", text " : subtraction" ]
-                        , li [] [ code "*", text " : multiplcation" ]
+                        , li [] [ code "*", text " : multiplication" ]
                         , li [] [ code "^", text " : exponentiation" ]
                         ]
                     , p [] [ text "Division is non-continuous and therefore you don't get to use it." ]

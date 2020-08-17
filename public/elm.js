@@ -10796,7 +10796,7 @@ var $author$project$Main$view = function (model) {
 									_List_fromArray(
 										[
 											code('*'),
-											$rtfeldman$elm_css$Html$Styled$text(' : multiplcation')
+											$rtfeldman$elm_css$Html$Styled$text(' : multiplication')
 										])),
 									A2(
 									$rtfeldman$elm_css$Html$Styled$li,
