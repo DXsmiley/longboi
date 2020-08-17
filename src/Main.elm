@@ -9,7 +9,7 @@ import Browser.Navigation as Nav
 import Browser.Events
 import Css
 import Css.Global
-import Html.Styled exposing (Html, button, div, p, text, toUnstyled, styled)
+import Html.Styled exposing (Html, button, div, p, text, toUnstyled, styled, ul, li)
 import Html.Styled.Attributes exposing (href, target)
 import Html.Styled.Events exposing (onClick, onInput)
 import Url
@@ -43,6 +43,7 @@ type FunctionName
     = FuncSin
     | FuncCos
     | FuncExp
+    | FuncAbs
 
 
 type Expression
@@ -62,6 +63,7 @@ evalFunction name arg =
         FuncSin -> sin arg
         FuncCos -> cos arg
         FuncExp -> e ^ arg
+        FuncAbs -> abs arg
 
 
 evalExpression : Expression -> Float -> Float
@@ -115,7 +117,9 @@ parseFunction name keyword =
 
 parseAtom : Parser Expression
 parseAtom =
-    Parser.oneOf
+    Parser.succeed identity
+    |. Parser.spaces
+    |= Parser.oneOf
         [ Parser.succeed identity
             |. Parser.symbol "("
             |= Parser.lazy (\() -> parseAddition)
@@ -123,6 +127,7 @@ parseAtom =
         , parseFunction FuncSin "sin"
         , parseFunction FuncCos "cos"
         , parseFunction FuncExp "exp"
+        , parseFunction FuncAbs "abs"
         , Parser.succeed VarX
             |. Parser.keyword "x"
         , Parser.succeed ConstValue
@@ -130,10 +135,20 @@ parseAtom =
         , Parser.succeed ConstPi
             |.  Parser.keyword "pi"
         ]
+    |. Parser.spaces
 
 
-parseExponentiation = parseSequence (Parser.symbol "^") parseAtom  (\l (_, r) -> Exponentiation l r)
-parseMultiplication = parseSequence (Parser.symbol "*") parseExponentiation (\l (_, r) -> Product l r)
+parseExponentiation =
+    parseSequence
+        (Parser.symbol "^")
+        parseAtom
+        (\l (_, r) -> Exponentiation l r)
+
+parseMultiplication =
+    parseSequence
+        (Parser.symbol "*")
+        parseExponentiation
+        (\l (_, r) -> Product l r)
 
 parseAddition =
     parseSequence
@@ -525,6 +540,34 @@ view model =
                     []
                     [ viewCanvas model.animatedValues model.spriteHead model.spriteTail
                       |> Html.Styled.fromUnstyled
+                    ]
+                , let code t = Html.Styled.code [] [ text t ]in
+                  styled div
+                    [ Css.maxWidth (Css.px 200)
+                    , Css.marginTop (Css.px 30)
+                    ]
+                    []
+                    [ p []
+                        [ text "You can use the variable "
+                        , code "x"
+                        , text " and the four operators:"
+                        ]
+                    , ul
+                        []
+                        [ li [] [ code "+", text " : addition" ]
+                        , li [] [ code "-", text " : subtraction" ]
+                        , li [] [ code "*", text " : multiplcation" ]
+                        , li [] [ code "^", text " : exponentiation" ]
+                        ]
+                    , p [] [ text "Division is non-continuous and therefore you don't get to use it." ]
+                    , p [] [ text "The following functions also exist" ]
+                    , ul
+                        []
+                        [ li [] [ code "sin" ]
+                        , li [] [ code "cos" ]
+                        , li [] [ code "exp" ]
+                        , li [] [ code "abs" ]
+                        ]
                     ]
                 ]
     in

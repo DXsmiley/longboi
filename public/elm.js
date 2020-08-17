@@ -5332,6 +5332,12 @@ var $author$project$Main$Product = F2(
 	});
 var $author$project$Main$VarX = {$: 'VarX'};
 var $elm$core$Basics$e = _Basics_e;
+var $elm$core$Basics$negate = function (n) {
+	return -n;
+};
+var $elm$core$Basics$abs = function (n) {
+	return (n < 0) ? (-n) : n;
+};
 var $elm$core$Basics$cos = _Basics_cos;
 var $elm$core$Basics$pow = _Basics_pow;
 var $elm$core$Basics$sin = _Basics_sin;
@@ -5342,8 +5348,10 @@ var $author$project$Main$evalFunction = F2(
 				return $elm$core$Basics$sin(arg);
 			case 'FuncCos':
 				return $elm$core$Basics$cos(arg);
-			default:
+			case 'FuncExp':
 				return A2($elm$core$Basics$pow, $elm$core$Basics$e, arg);
+			default:
+				return $elm$core$Basics$abs(arg);
 		}
 	});
 var $elm$core$Basics$pi = _Basics_pi;
@@ -5602,12 +5610,6 @@ var $author$project$Main$Failure = {$: 'Failure'};
 var $author$project$Main$Success = function (a) {
 	return {$: 'Success', a: a};
 };
-var $elm$core$Basics$negate = function (n) {
-	return -n;
-};
-var $elm$core$Basics$abs = function (n) {
-	return (n < 0) ? (-n) : n;
-};
 var $elm$core$Basics$clamp = F3(
 	function (low, high, number) {
 		return (_Utils_cmp(number, low) < 0) ? low : ((_Utils_cmp(number, high) > 0) ? high : number);
@@ -5717,6 +5719,7 @@ var $author$project$Main$Exponentiation = F2(
 	function (a, b) {
 		return {$: 'Exponentiation', a: a, b: b};
 	});
+var $author$project$Main$FuncAbs = {$: 'FuncAbs'};
 var $author$project$Main$FuncCos = {$: 'FuncCos'};
 var $author$project$Main$FuncExp = {$: 'FuncExp'};
 var $author$project$Main$Minus = {$: 'Minus'};
@@ -6305,38 +6308,48 @@ function $author$project$Main$cyclic$parseExponentiation() {
 			}));
 }
 function $author$project$Main$cyclic$parseAtom() {
-	return $elm$parser$Parser$oneOf(
-		_List_fromArray(
-			[
-				A2(
-				$elm$parser$Parser$keeper,
-				A2(
-					$elm$parser$Parser$ignorer,
-					$elm$parser$Parser$succeed($elm$core$Basics$identity),
-					$elm$parser$Parser$symbol('(')),
-				A2(
-					$elm$parser$Parser$ignorer,
-					$elm$parser$Parser$lazy(
-						function (_v1) {
-							return $author$project$Main$cyclic$parseAddition();
-						}),
-					$elm$parser$Parser$symbol(')'))),
-				A2($author$project$Main$parseFunction, $author$project$Main$FuncSin, 'sin'),
-				A2($author$project$Main$parseFunction, $author$project$Main$FuncCos, 'cos'),
-				A2($author$project$Main$parseFunction, $author$project$Main$FuncExp, 'exp'),
-				A2(
-				$elm$parser$Parser$ignorer,
-				$elm$parser$Parser$succeed($author$project$Main$VarX),
-				$elm$parser$Parser$keyword('x')),
-				A2(
-				$elm$parser$Parser$keeper,
-				$elm$parser$Parser$succeed($author$project$Main$ConstValue),
-				$elm$parser$Parser$float),
-				A2(
-				$elm$parser$Parser$ignorer,
-				$elm$parser$Parser$succeed($author$project$Main$ConstPi),
-				$elm$parser$Parser$keyword('pi'))
-			]));
+	return A2(
+		$elm$parser$Parser$keeper,
+		A2(
+			$elm$parser$Parser$ignorer,
+			$elm$parser$Parser$succeed($elm$core$Basics$identity),
+			$elm$parser$Parser$spaces),
+		A2(
+			$elm$parser$Parser$ignorer,
+			$elm$parser$Parser$oneOf(
+				_List_fromArray(
+					[
+						A2(
+						$elm$parser$Parser$keeper,
+						A2(
+							$elm$parser$Parser$ignorer,
+							$elm$parser$Parser$succeed($elm$core$Basics$identity),
+							$elm$parser$Parser$symbol('(')),
+						A2(
+							$elm$parser$Parser$ignorer,
+							$elm$parser$Parser$lazy(
+								function (_v1) {
+									return $author$project$Main$cyclic$parseAddition();
+								}),
+							$elm$parser$Parser$symbol(')'))),
+						A2($author$project$Main$parseFunction, $author$project$Main$FuncSin, 'sin'),
+						A2($author$project$Main$parseFunction, $author$project$Main$FuncCos, 'cos'),
+						A2($author$project$Main$parseFunction, $author$project$Main$FuncExp, 'exp'),
+						A2($author$project$Main$parseFunction, $author$project$Main$FuncAbs, 'abs'),
+						A2(
+						$elm$parser$Parser$ignorer,
+						$elm$parser$Parser$succeed($author$project$Main$VarX),
+						$elm$parser$Parser$keyword('x')),
+						A2(
+						$elm$parser$Parser$keeper,
+						$elm$parser$Parser$succeed($author$project$Main$ConstValue),
+						$elm$parser$Parser$float),
+						A2(
+						$elm$parser$Parser$ignorer,
+						$elm$parser$Parser$succeed($author$project$Main$ConstPi),
+						$elm$parser$Parser$keyword('pi'))
+					])),
+			$elm$parser$Parser$spaces));
 }
 try {
 	var $author$project$Main$parseAddition = $author$project$Main$cyclic$parseAddition();
@@ -6794,6 +6807,7 @@ var $rtfeldman$elm_css$Css$prop5 = F6(
 var $rtfeldman$elm_css$Css$boxShadow5 = $rtfeldman$elm_css$Css$prop5('box-shadow');
 var $rtfeldman$elm_css$Css$boxSizing = $rtfeldman$elm_css$Css$prop1('box-sizing');
 var $rtfeldman$elm_css$Css$center = $rtfeldman$elm_css$Css$prop1('center');
+var $rtfeldman$elm_css$Html$Styled$code = $rtfeldman$elm_css$Html$Styled$node('code');
 var $rtfeldman$elm_css$Css$row = {flexDirection: $rtfeldman$elm_css$Css$Structure$Compatible, flexDirectionOrWrap: $rtfeldman$elm_css$Css$Structure$Compatible, value: 'row'};
 var $rtfeldman$elm_css$Css$column = _Utils_update(
 	$rtfeldman$elm_css$Css$row,
@@ -8677,6 +8691,7 @@ var $rtfeldman$elm_css$Css$justifyContent = function (fn) {
 		'justify-content',
 		fn($rtfeldman$elm_css$Css$Internal$lengthForOverloadedProperty));
 };
+var $rtfeldman$elm_css$Html$Styled$li = $rtfeldman$elm_css$Html$Styled$node('li');
 var $rtfeldman$elm_css$Css$margin = $rtfeldman$elm_css$Css$prop1('margin');
 var $rtfeldman$elm_css$Css$prop2 = F3(
 	function (key, argA, argB) {
@@ -8691,6 +8706,8 @@ var $rtfeldman$elm_css$Css$prop2 = F3(
 	});
 var $rtfeldman$elm_css$Css$margin2 = $rtfeldman$elm_css$Css$prop2('margin');
 var $rtfeldman$elm_css$Css$marginLeft = $rtfeldman$elm_css$Css$prop1('margin-left');
+var $rtfeldman$elm_css$Css$marginTop = $rtfeldman$elm_css$Css$prop1('margin-top');
+var $rtfeldman$elm_css$Css$maxWidth = $rtfeldman$elm_css$Css$prop1('max-width');
 var $rtfeldman$elm_css$Css$monospace = {fontFamily: $rtfeldman$elm_css$Css$Structure$Compatible, value: 'monospace'};
 var $rtfeldman$elm_css$Css$noWrap = {flexDirectionOrWrap: $rtfeldman$elm_css$Css$Structure$Compatible, flexWrap: $rtfeldman$elm_css$Css$Structure$Compatible, value: 'nowrap', whiteSpace: $rtfeldman$elm_css$Css$Structure$Compatible};
 var $elm$virtual_dom$VirtualDom$Normal = function (a) {
@@ -9321,6 +9338,7 @@ var $rtfeldman$elm_css$VirtualDom$Styled$toUnstyled = function (vdom) {
 	}
 };
 var $rtfeldman$elm_css$Html$Styled$toUnstyled = $rtfeldman$elm_css$VirtualDom$Styled$toUnstyled;
+var $rtfeldman$elm_css$Html$Styled$ul = $rtfeldman$elm_css$Html$Styled$node('ul');
 var $rtfeldman$elm_css$Html$Styled$Attributes$value = $rtfeldman$elm_css$Html$Styled$Attributes$stringProperty('value');
 var $author$project$Main$TextureLoadedHead = function (a) {
 	return {$: 'TextureLoadedHead', a: a};
@@ -10718,7 +10736,127 @@ var $author$project$Main$view = function (model) {
 					[
 						$rtfeldman$elm_css$Html$Styled$fromUnstyled(
 						A3($author$project$Main$viewCanvas, model.animatedValues, model.spriteHead, model.spriteTail))
-					]))
+					])),
+				function () {
+				var code = function (t) {
+					return A2(
+						$rtfeldman$elm_css$Html$Styled$code,
+						_List_Nil,
+						_List_fromArray(
+							[
+								$rtfeldman$elm_css$Html$Styled$text(t)
+							]));
+				};
+				return A4(
+					$rtfeldman$elm_css$Html$Styled$styled,
+					$rtfeldman$elm_css$Html$Styled$div,
+					_List_fromArray(
+						[
+							$rtfeldman$elm_css$Css$maxWidth(
+							$rtfeldman$elm_css$Css$px(200)),
+							$rtfeldman$elm_css$Css$marginTop(
+							$rtfeldman$elm_css$Css$px(30))
+						]),
+					_List_Nil,
+					_List_fromArray(
+						[
+							A2(
+							$rtfeldman$elm_css$Html$Styled$p,
+							_List_Nil,
+							_List_fromArray(
+								[
+									$rtfeldman$elm_css$Html$Styled$text('You can use the variable '),
+									code('x'),
+									$rtfeldman$elm_css$Html$Styled$text(' and the four operators:')
+								])),
+							A2(
+							$rtfeldman$elm_css$Html$Styled$ul,
+							_List_Nil,
+							_List_fromArray(
+								[
+									A2(
+									$rtfeldman$elm_css$Html$Styled$li,
+									_List_Nil,
+									_List_fromArray(
+										[
+											code('+'),
+											$rtfeldman$elm_css$Html$Styled$text(' : addition')
+										])),
+									A2(
+									$rtfeldman$elm_css$Html$Styled$li,
+									_List_Nil,
+									_List_fromArray(
+										[
+											code('-'),
+											$rtfeldman$elm_css$Html$Styled$text(' : subtraction')
+										])),
+									A2(
+									$rtfeldman$elm_css$Html$Styled$li,
+									_List_Nil,
+									_List_fromArray(
+										[
+											code('*'),
+											$rtfeldman$elm_css$Html$Styled$text(' : multiplcation')
+										])),
+									A2(
+									$rtfeldman$elm_css$Html$Styled$li,
+									_List_Nil,
+									_List_fromArray(
+										[
+											code('^'),
+											$rtfeldman$elm_css$Html$Styled$text(' : exponentiation')
+										]))
+								])),
+							A2(
+							$rtfeldman$elm_css$Html$Styled$p,
+							_List_Nil,
+							_List_fromArray(
+								[
+									$rtfeldman$elm_css$Html$Styled$text('Division is non-continuous and therefore you don\'t get to use it.')
+								])),
+							A2(
+							$rtfeldman$elm_css$Html$Styled$p,
+							_List_Nil,
+							_List_fromArray(
+								[
+									$rtfeldman$elm_css$Html$Styled$text('The following functions also exist')
+								])),
+							A2(
+							$rtfeldman$elm_css$Html$Styled$ul,
+							_List_Nil,
+							_List_fromArray(
+								[
+									A2(
+									$rtfeldman$elm_css$Html$Styled$li,
+									_List_Nil,
+									_List_fromArray(
+										[
+											code('sin')
+										])),
+									A2(
+									$rtfeldman$elm_css$Html$Styled$li,
+									_List_Nil,
+									_List_fromArray(
+										[
+											code('cos')
+										])),
+									A2(
+									$rtfeldman$elm_css$Html$Styled$li,
+									_List_Nil,
+									_List_fromArray(
+										[
+											code('exp')
+										])),
+									A2(
+									$rtfeldman$elm_css$Html$Styled$li,
+									_List_Nil,
+									_List_fromArray(
+										[
+											code('abs')
+										]))
+								]))
+						]));
+			}()
 			]));
 	return {
 		body: _List_fromArray(
