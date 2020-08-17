@@ -396,8 +396,8 @@ viewCanvas points spriteHead spriteTail =
         { width = w
         , height = h
         , textures =
-            [ Canvas.Texture.loadFromImageUrl "./kita-head.png" TextureLoadedHead
-            , Canvas.Texture.loadFromImageUrl "./kita-tail.png" TextureLoadedTail
+            [ Canvas.Texture.loadFromImageUrl "./public/kita-head.png" TextureLoadedHead
+            , Canvas.Texture.loadFromImageUrl "./public/kita-tail.png" TextureLoadedTail
             ]
         }
         []
