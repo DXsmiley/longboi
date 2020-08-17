@@ -10819,7 +10819,7 @@ var $author$project$Main$view = function (model) {
 							_List_Nil,
 							_List_fromArray(
 								[
-									$rtfeldman$elm_css$Html$Styled$text('The following functions also exist')
+									$rtfeldman$elm_css$Html$Styled$text('The following functions exist')
 								])),
 							A2(
 							$rtfeldman$elm_css$Html$Styled$ul,
@@ -10854,6 +10854,17 @@ var $author$project$Main$view = function (model) {
 										[
 											code('abs')
 										]))
+								])),
+							A2(
+							$rtfeldman$elm_css$Html$Styled$p,
+							_List_Nil,
+							_List_fromArray(
+								[
+									$rtfeldman$elm_css$Html$Styled$text('The constants '),
+									code('pi'),
+									$rtfeldman$elm_css$Html$Styled$text(' and '),
+									code('e'),
+									$rtfeldman$elm_css$Html$Styled$text(' are also available.')
 								]))
 						]));
 			}()

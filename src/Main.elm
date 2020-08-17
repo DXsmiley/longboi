@@ -560,13 +560,20 @@ view model =
                         , li [] [ code "^", text " : exponentiation" ]
                         ]
                     , p [] [ text "Division is non-continuous and therefore you don't get to use it." ]
-                    , p [] [ text "The following functions also exist" ]
+                    , p [] [ text "The following functions exist" ]
                     , ul
                         []
                         [ li [] [ code "sin" ]
                         , li [] [ code "cos" ]
                         , li [] [ code "exp" ]
                         , li [] [ code "abs" ]
+                        ]
+                    , p []
+                        [ text "The constants "
+                        , code "pi"
+                        , text " and "
+                        , code "e"
+                        , text " are also available."
                         ]
                     ]
                 ]
