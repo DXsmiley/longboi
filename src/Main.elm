@@ -181,7 +181,7 @@ init flags url key =
     in
     let
         initialPoints =
-            calculatePoints initialExpression 100 True
+            calculatePoints initialExpression True
     in
     let
         state =
@@ -223,29 +223,36 @@ fWeightedAverage fa fb (xl, xr) x =
     (fa x) * (1 - k) + (fb x) * k
 
 
-calculatePoints : Expression -> Int -> Bool -> List Float
-calculatePoints expression numSamples smooth =
+calculatePoints : Expression -> Bool -> List Float
+calculatePoints expression smooth =
     let
+        smoothRange = 1.5
+        maxValue = 10
+        numSamples = 200
+
         rawValue : Float -> Float
         rawValue x =
-            evalExpression expression (x / 10.0)
+            evalExpression expression x
 
         x0 = rawValue 0
-        xl = rawValue (toFloat numSamples)
+        xl = rawValue (toFloat maxValue)
 
         smoothValue : Float -> Float
         smoothValue x =
             if smooth then
                 fWeightedAverage
-                    (fWeightedAverage (\_ -> x0) rawValue (0, 20))
+                    (fWeightedAverage (\_ -> x0) rawValue (0, smoothRange))
                     (\_ -> xl)
-                    (toFloat numSamples - 20, toFloat numSamples)
+                    (toFloat maxValue - smoothRange, toFloat maxValue)
                     x
             else
                 rawValue x
     in
     List.range 0 numSamples
-    |> List.map (toFloat >> smoothValue)
+    |> List.map
+        (\s ->
+            smoothValue ((toFloat s) / (toFloat numSamples) * (toFloat maxValue))
+        )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -291,7 +298,7 @@ update msg model =
                             | input = newInput
                             , parsedExpression = Just expression
                             , expressionError = Nothing
-                            , computedValues = calculatePoints expression 100 model.smoothEnds
+                            , computedValues = calculatePoints expression model.smoothEnds
                             }
             in
             ( newModel, Cmd.none )
@@ -322,7 +329,7 @@ update msg model =
               | smoothEnds = smooth
               , computedValues =
                 model.parsedExpression
-                |> Maybe.map (\e -> calculatePoints e 100 smooth)
+                |> Maybe.map (\e -> calculatePoints e smooth)
                 |> Maybe.withDefault model.computedValues
               }
             , Cmd.none
@@ -344,12 +351,12 @@ thiccLine y l points o1 o2 color =
         pointsOnCanvas =
             (++)
                 (List.indexedMap
-                    (\i v -> (l + v + o1, y + 256 + toFloat i * 4))
+                    (\i v -> (l + v + o1, y + 256 + toFloat i * 2))
                     points
                 )
                 (List.reverse
                     (List.indexedMap
-                        (\i v -> (l + v + o2, y + 256 + toFloat i * 4))
+                        (\i v -> (l + v + o2, y + 256 + toFloat i * 2))
                         points
                     )
                 )
@@ -411,7 +418,7 @@ viewCanvas points spriteHead spriteTail =
         , thiccLine y (w / 2 - o) points 0 1    Color.black
         , thiccLine y (w / 2 - o) points 70 71  Color.black
         , viewSpriteAt (x0, y) spriteHead
-        , viewSpriteAt (xl, toFloat <| y + 252 + (List.length points) * 4) spriteTail
+        , viewSpriteAt (xl, toFloat <| y + 254 + (List.length points) * 2) spriteTail
         ]
 
 

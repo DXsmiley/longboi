@@ -5331,11 +5331,6 @@ var $author$project$Main$Product = F2(
 		return {$: 'Product', a: a, b: b};
 	});
 var $author$project$Main$VarX = {$: 'VarX'};
-var $elm$core$Basics$composeR = F3(
-	function (f, g, x) {
-		return g(
-			f(x));
-	});
 var $elm$core$Basics$e = _Basics_e;
 var $elm$core$Basics$cos = _Basics_cos;
 var $elm$core$Basics$pow = _Basics_pow;
@@ -5408,13 +5403,16 @@ var $author$project$Main$fWeightedAverage = F4(
 			}
 		}
 	});
-var $author$project$Main$calculatePoints = F3(
-	function (expression, numSamples, smooth) {
+var $author$project$Main$calculatePoints = F2(
+	function (expression, smooth) {
+		var smoothRange = 1.5;
 		var rawValue = function (x) {
-			return A2($author$project$Main$evalExpression, expression, x / 10.0);
+			return A2($author$project$Main$evalExpression, expression, x);
 		};
 		var x0 = rawValue(0);
-		var xl = rawValue(numSamples);
+		var numSamples = 200;
+		var maxValue = 10;
+		var xl = rawValue(maxValue);
 		var smoothValue = function (x) {
 			return smooth ? A4(
 				$author$project$Main$fWeightedAverage,
@@ -5424,16 +5422,18 @@ var $author$project$Main$calculatePoints = F3(
 						return x0;
 					},
 					rawValue,
-					_Utils_Tuple2(0, 20)),
+					_Utils_Tuple2(0, smoothRange)),
 				function (_v1) {
 					return xl;
 				},
-				_Utils_Tuple2(numSamples - 20, numSamples),
+				_Utils_Tuple2(maxValue - smoothRange, maxValue),
 				x) : rawValue(x);
 		};
 		return A2(
 			$elm$core$List$map,
-			A2($elm$core$Basics$composeR, $elm$core$Basics$toFloat, smoothValue),
+			function (s) {
+				return smoothValue((s / numSamples) * maxValue);
+			},
 			A2($elm$core$List$range, 0, numSamples));
 	});
 var $elm$core$Platform$Cmd$batch = _Platform_batch;
@@ -5444,7 +5444,7 @@ var $author$project$Main$init = F3(
 			$author$project$Main$Product,
 			A2($author$project$Main$FunctionCall, $author$project$Main$FuncSin, $author$project$Main$VarX),
 			$author$project$Main$ConstValue(20.0));
-		var initialPoints = A3($author$project$Main$calculatePoints, initialExpression, 100, true);
+		var initialPoints = A2($author$project$Main$calculatePoints, initialExpression, true);
 		var state = {
 			animatedValues: initialPoints,
 			computedValues: initialPoints,
@@ -6552,7 +6552,7 @@ var $author$project$Main$update = F2(
 						return _Utils_update(
 							model,
 							{
-								computedValues: A3($author$project$Main$calculatePoints, expression, 100, model.smoothEnds),
+								computedValues: A2($author$project$Main$calculatePoints, expression, model.smoothEnds),
 								expressionError: $elm$core$Maybe$Nothing,
 								input: newInput,
 								parsedExpression: $elm$core$Maybe$Just(expression)
@@ -6594,7 +6594,7 @@ var $author$project$Main$update = F2(
 								A2(
 									$elm$core$Maybe$map,
 									function (e) {
-										return A3($author$project$Main$calculatePoints, e, 100, smooth);
+										return A2($author$project$Main$calculatePoints, e, smooth);
 									},
 									model.parsedExpression)),
 							smoothEnds: smooth
@@ -9535,7 +9535,7 @@ var $author$project$Main$thiccLine = F6(
 				$elm$core$List$indexedMap,
 				F2(
 					function (i, v) {
-						return _Utils_Tuple2((l + v) + o1, (y + 256) + (i * 4));
+						return _Utils_Tuple2((l + v) + o1, (y + 256) + (i * 2));
 					}),
 				points),
 			$elm$core$List$reverse(
@@ -9543,7 +9543,7 @@ var $author$project$Main$thiccLine = F6(
 					$elm$core$List$indexedMap,
 					F2(
 						function (i, v) {
-							return _Utils_Tuple2((l + v) + o2, (y + 256) + (i * 4));
+							return _Utils_Tuple2((l + v) + o2, (y + 256) + (i * 2));
 						}),
 					points)));
 		return A2(
@@ -10498,7 +10498,7 @@ var $author$project$Main$viewCanvas = F3(
 					$author$project$Main$viewSpriteAt,
 					_Utils_Tuple2(
 						xl,
-						(y + 252) + ($elm$core$List$length(points) * 4)),
+						(y + 254) + ($elm$core$List$length(points) * 2)),
 					spriteTail)
 				]));
 	});
