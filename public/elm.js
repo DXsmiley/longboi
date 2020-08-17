@@ -10881,7 +10881,7 @@ var $author$project$Main$view = function (model) {
 						]))),
 				$rtfeldman$elm_css$Html$Styled$toUnstyled(body)
 			]),
-		title: 'Starter page'
+		title: 'Longboi'
 	};
 };
 var $author$project$Main$main = $elm$browser$Browser$application(

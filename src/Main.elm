@@ -571,7 +571,7 @@ view model =
                     ]
                 ]
     in
-    { title = "Starter page"
+    { title = "Longboi"
     , body =
         [ Css.Global.global
             [ Css.Global.body
