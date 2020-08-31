@@ -4522,6 +4522,9 @@ var _Bitwise_shiftRightZfBy = F2(function(offset, a)
 {
 	return a >>> offset;
 });
+var $author$project$Main$AnimationFrame = function (a) {
+	return {$: 'AnimationFrame', a: a};
+};
 var $author$project$Main$LinkClicked = function (a) {
 	return {$: 'LinkClicked', a: a};
 };
@@ -5317,20 +5320,20 @@ var $elm$core$Task$perform = F2(
 				A2($elm$core$Task$map, toMessage, task)));
 	});
 var $elm$browser$Browser$application = _Browser_application;
-var $author$project$Main$ConstValue = function (a) {
+var $author$project$Expression$ConstValue = function (a) {
 	return {$: 'ConstValue', a: a};
 };
-var $author$project$Main$FuncSin = {$: 'FuncSin'};
-var $author$project$Main$FunctionCall = F2(
+var $author$project$Expression$FuncSin = {$: 'FuncSin'};
+var $author$project$Expression$FunctionCall = F2(
 	function (a, b) {
 		return {$: 'FunctionCall', a: a, b: b};
 	});
 var $author$project$Main$Loading = {$: 'Loading'};
-var $author$project$Main$Product = F2(
+var $author$project$Expression$Product = F2(
 	function (a, b) {
 		return {$: 'Product', a: a, b: b};
 	});
-var $author$project$Main$VarX = {$: 'VarX'};
+var $author$project$Expression$VarX = {$: 'VarX'};
 var $elm$core$Basics$e = _Basics_e;
 var $elm$core$Basics$negate = function (n) {
 	return -n;
@@ -5341,7 +5344,7 @@ var $elm$core$Basics$abs = function (n) {
 var $elm$core$Basics$cos = _Basics_cos;
 var $elm$core$Basics$pow = _Basics_pow;
 var $elm$core$Basics$sin = _Basics_sin;
-var $author$project$Main$evalFunction = F2(
+var $author$project$Expression$evaluateFunction = F2(
 	function (name, arg) {
 		switch (name.$) {
 			case 'FuncSin':
@@ -5355,7 +5358,7 @@ var $author$project$Main$evalFunction = F2(
 		}
 	});
 var $elm$core$Basics$pi = _Basics_pi;
-var $author$project$Main$evalExpression = F2(
+var $author$project$Expression$evaluate = F2(
 	function (expression, x) {
 		switch (expression.$) {
 			case 'VarX':
@@ -5371,28 +5374,28 @@ var $author$project$Main$evalExpression = F2(
 				var name = expression.a;
 				var argument = expression.b;
 				return A2(
-					$author$project$Main$evalFunction,
+					$author$project$Expression$evaluateFunction,
 					name,
-					A2($author$project$Main$evalExpression, argument, x));
+					A2($author$project$Expression$evaluate, argument, x));
 			case 'Product':
 				var l = expression.a;
 				var r = expression.b;
-				return A2($author$project$Main$evalExpression, l, x) * A2($author$project$Main$evalExpression, r, x);
+				return A2($author$project$Expression$evaluate, l, x) * A2($author$project$Expression$evaluate, r, x);
 			case 'Sum':
 				var l = expression.a;
 				var r = expression.b;
-				return A2($author$project$Main$evalExpression, l, x) + A2($author$project$Main$evalExpression, r, x);
+				return A2($author$project$Expression$evaluate, l, x) + A2($author$project$Expression$evaluate, r, x);
 			case 'Difference':
 				var l = expression.a;
 				var r = expression.b;
-				return A2($author$project$Main$evalExpression, l, x) - A2($author$project$Main$evalExpression, r, x);
+				return A2($author$project$Expression$evaluate, l, x) - A2($author$project$Expression$evaluate, r, x);
 			default:
 				var l = expression.a;
 				var r = expression.b;
 				return A2(
 					$elm$core$Basics$pow,
-					A2($author$project$Main$evalExpression, l, x),
-					A2($author$project$Main$evalExpression, r, x));
+					A2($author$project$Expression$evaluate, l, x),
+					A2($author$project$Expression$evaluate, r, x));
 		}
 	});
 var $elm$core$Basics$ge = _Utils_ge;
@@ -5415,7 +5418,7 @@ var $author$project$Main$calculatePoints = F2(
 	function (expression, smooth) {
 		var smoothRange = 1.5;
 		var rawValue = function (x) {
-			return A2($author$project$Main$evalExpression, expression, x);
+			return A2($author$project$Expression$evaluate, expression, x);
 		};
 		var x0 = rawValue(0);
 		var numSamples = 200;
@@ -5449,9 +5452,9 @@ var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
 var $author$project$Main$init = F3(
 	function (flags, url, key) {
 		var initialExpression = A2(
-			$author$project$Main$Product,
-			A2($author$project$Main$FunctionCall, $author$project$Main$FuncSin, $author$project$Main$VarX),
-			$author$project$Main$ConstValue(20.0));
+			$author$project$Expression$Product,
+			A2($author$project$Expression$FunctionCall, $author$project$Expression$FuncSin, $author$project$Expression$VarX),
+			$author$project$Expression$ConstValue(20.0));
 		var initialPoints = A2($author$project$Main$calculatePoints, initialExpression, true);
 		var state = {
 			animatedValues: initialPoints,
@@ -5466,9 +5469,6 @@ var $author$project$Main$init = F3(
 		};
 		return _Utils_Tuple2(state, $elm$core$Platform$Cmd$none);
 	});
-var $author$project$Main$AnimationFrame = function (a) {
-	return {$: 'AnimationFrame', a: a};
-};
 var $elm$browser$Browser$AnimationManager$Time = function (a) {
 	return {$: 'Time', a: a};
 };
@@ -5603,9 +5603,6 @@ var $elm$browser$Browser$AnimationManager$onAnimationFrame = function (tagger) {
 		$elm$browser$Browser$AnimationManager$Time(tagger));
 };
 var $elm$browser$Browser$Events$onAnimationFrame = $elm$browser$Browser$AnimationManager$onAnimationFrame;
-var $author$project$Main$subscriptions = function (model) {
-	return $elm$browser$Browser$Events$onAnimationFrame($author$project$Main$AnimationFrame);
-};
 var $author$project$Main$Failure = {$: 'Failure'};
 var $author$project$Main$Success = function (a) {
 	return {$: 'Success', a: a};
@@ -5614,9 +5611,6 @@ var $elm$core$Basics$clamp = F3(
 	function (low, high, number) {
 		return (_Utils_cmp(number, low) < 0) ? low : ((_Utils_cmp(number, high) > 0) ? high : number);
 	});
-var $elm$parser$Parser$deadEndsToString = function (deadEnds) {
-	return 'TODO deadEndsToString';
-};
 var $elm$browser$Browser$Navigation$load = _Browser_load;
 var $elm$core$Maybe$map = F2(
 	function (f, maybe) {
@@ -5710,21 +5704,21 @@ var $elm$parser$Parser$Advanced$ignorer = F2(
 		return A3($elm$parser$Parser$Advanced$map2, $elm$core$Basics$always, keepParser, ignoreParser);
 	});
 var $elm$parser$Parser$ignorer = $elm$parser$Parser$Advanced$ignorer;
-var $author$project$Main$ConstPi = {$: 'ConstPi'};
-var $author$project$Main$Difference = F2(
+var $author$project$Expression$ConstPi = {$: 'ConstPi'};
+var $author$project$Expression$Difference = F2(
 	function (a, b) {
 		return {$: 'Difference', a: a, b: b};
 	});
-var $author$project$Main$Exponentiation = F2(
+var $author$project$Expression$Exponentiation = F2(
 	function (a, b) {
 		return {$: 'Exponentiation', a: a, b: b};
 	});
-var $author$project$Main$FuncAbs = {$: 'FuncAbs'};
-var $author$project$Main$FuncCos = {$: 'FuncCos'};
-var $author$project$Main$FuncExp = {$: 'FuncExp'};
-var $author$project$Main$Minus = {$: 'Minus'};
-var $author$project$Main$Plus = {$: 'Plus'};
-var $author$project$Main$Sum = F2(
+var $author$project$Expression$FuncAbs = {$: 'FuncAbs'};
+var $author$project$Expression$FuncCos = {$: 'FuncCos'};
+var $author$project$Expression$FuncExp = {$: 'FuncExp'};
+var $author$project$Expression$Left = {$: 'Left'};
+var $author$project$Expression$Right = {$: 'Right'};
+var $author$project$Expression$Sum = F2(
 	function (a, b) {
 		return {$: 'Sum', a: a, b: b};
 	});
@@ -5949,29 +5943,6 @@ var $elm$parser$Parser$Advanced$lazy = function (thunk) {
 		});
 };
 var $elm$parser$Parser$lazy = $elm$parser$Parser$Advanced$lazy;
-var $elm$parser$Parser$Advanced$map = F2(
-	function (func, _v0) {
-		var parse = _v0.a;
-		return $elm$parser$Parser$Advanced$Parser(
-			function (s0) {
-				var _v1 = parse(s0);
-				if (_v1.$ === 'Good') {
-					var p = _v1.a;
-					var a = _v1.b;
-					var s1 = _v1.c;
-					return A3(
-						$elm$parser$Parser$Advanced$Good,
-						p,
-						func(a),
-						s1);
-				} else {
-					var p = _v1.a;
-					var x = _v1.b;
-					return A2($elm$parser$Parser$Advanced$Bad, p, x);
-				}
-			});
-	});
-var $elm$parser$Parser$map = $elm$parser$Parser$Advanced$map;
 var $elm$parser$Parser$Advanced$Append = F2(
 	function (a, b) {
 		return {$: 'Append', a: a, b: b};
@@ -6021,6 +5992,13 @@ var $elm$parser$Parser$Done = function (a) {
 var $elm$parser$Parser$Loop = function (a) {
 	return {$: 'Loop', a: a};
 };
+var $author$project$Expression$foldInDirection = function (direction) {
+	if (direction.$ === 'Left') {
+		return $elm$core$List$foldl;
+	} else {
+		return $elm$core$List$foldr;
+	}
+};
 var $elm$parser$Parser$Advanced$loopHelp = F4(
 	function (p, state, callback, s0) {
 		loopHelp:
@@ -6061,6 +6039,29 @@ var $elm$parser$Parser$Advanced$loop = F2(
 				return A4($elm$parser$Parser$Advanced$loopHelp, false, state, callback, s);
 			});
 	});
+var $elm$parser$Parser$Advanced$map = F2(
+	function (func, _v0) {
+		var parse = _v0.a;
+		return $elm$parser$Parser$Advanced$Parser(
+			function (s0) {
+				var _v1 = parse(s0);
+				if (_v1.$ === 'Good') {
+					var p = _v1.a;
+					var a = _v1.b;
+					var s1 = _v1.c;
+					return A3(
+						$elm$parser$Parser$Advanced$Good,
+						p,
+						func(a),
+						s1);
+				} else {
+					var p = _v1.a;
+					var x = _v1.b;
+					return A2($elm$parser$Parser$Advanced$Bad, p, x);
+				}
+			});
+	});
+var $elm$parser$Parser$map = $elm$parser$Parser$Advanced$map;
 var $elm$parser$Parser$Advanced$Done = function (a) {
 	return {$: 'Done', a: a};
 };
@@ -6152,8 +6153,8 @@ var $elm$parser$Parser$Advanced$succeed = function (a) {
 		});
 };
 var $elm$parser$Parser$succeed = $elm$parser$Parser$Advanced$succeed;
-var $author$project$Main$parseSequence = F3(
-	function (sep, component, combiner) {
+var $author$project$Expression$parseSequence = F4(
+	function (foldDirection, sep, component, combiner) {
 		var helper = function (revParts) {
 			return $elm$parser$Parser$oneOf(
 				_List_fromArray(
@@ -6191,7 +6192,9 @@ var $author$project$Main$parseSequence = F3(
 				A2(
 					$elm$parser$Parser$ignorer,
 					$elm$parser$Parser$succeed(
-						$elm$core$List$foldl(
+						A2(
+							$author$project$Expression$foldInDirection,
+							foldDirection,
 							F2(
 								function (a, b) {
 									return A2(combiner, b, a);
@@ -6234,7 +6237,33 @@ var $elm$parser$Parser$symbol = function (str) {
 			str,
 			$elm$parser$Parser$ExpectingSymbol(str)));
 };
-var $author$project$Main$parseFunction = F2(
+var $author$project$Expression$parseOperatorSequence = F3(
+	function (foldDirection, seps, component) {
+		var sepsParser = $elm$parser$Parser$oneOf(
+			A2(
+				$elm$core$List$map,
+				function (_v1) {
+					var value = _v1.a;
+					var string = _v1.b;
+					return A2(
+						$elm$parser$Parser$ignorer,
+						$elm$parser$Parser$succeed(value),
+						$elm$parser$Parser$symbol(string));
+				},
+				seps));
+		return A4(
+			$author$project$Expression$parseSequence,
+			foldDirection,
+			sepsParser,
+			component,
+			F2(
+				function (l, _v0) {
+					var op = _v0.a;
+					var r = _v0.b;
+					return A2(op, l, r);
+				}));
+	});
+var $author$project$Expression$parseFunction = F2(
 	function (name, keyword) {
 		return A2(
 			$elm$parser$Parser$keeper,
@@ -6243,71 +6272,49 @@ var $author$project$Main$parseFunction = F2(
 				A2(
 					$elm$parser$Parser$ignorer,
 					$elm$parser$Parser$succeed(
-						$author$project$Main$FunctionCall(name)),
+						$author$project$Expression$FunctionCall(name)),
 					$elm$parser$Parser$keyword(keyword)),
 				$elm$parser$Parser$spaces),
 			A2(
 				$elm$parser$Parser$ignorer,
 				$elm$parser$Parser$lazy(
 					function (_v0) {
-						return $author$project$Main$cyclic$parseAtom();
+						return $author$project$Expression$cyclic$parseAtom();
 					}),
 				$elm$parser$Parser$spaces));
 	});
-function $author$project$Main$cyclic$parseAddition() {
+function $author$project$Expression$cyclic$parseAddition() {
 	return A3(
-		$author$project$Main$parseSequence,
-		$elm$parser$Parser$oneOf(
-			_List_fromArray(
-				[
-					A2(
-					$elm$parser$Parser$map,
-					function (_v4) {
-						return $author$project$Main$Plus;
-					},
-					$elm$parser$Parser$symbol('+')),
-					A2(
-					$elm$parser$Parser$map,
-					function (_v5) {
-						return $author$project$Main$Minus;
-					},
-					$elm$parser$Parser$symbol('-'))
-				])),
-		$author$project$Main$cyclic$parseMultiplication(),
-		F2(
-			function (l, _v6) {
-				var op = _v6.a;
-				var r = _v6.b;
-				if (op.$ === 'Plus') {
-					return A2($author$project$Main$Sum, l, r);
-				} else {
-					return A2($author$project$Main$Difference, l, r);
-				}
-			}));
+		$author$project$Expression$parseOperatorSequence,
+		$author$project$Expression$Left,
+		_List_fromArray(
+			[
+				_Utils_Tuple2($author$project$Expression$Sum, '+'),
+				_Utils_Tuple2($author$project$Expression$Difference, '-')
+			]),
+		$author$project$Expression$cyclic$parseMultiplication());
 }
-function $author$project$Main$cyclic$parseMultiplication() {
+function $author$project$Expression$cyclic$parseMultiplication() {
 	return A3(
-		$author$project$Main$parseSequence,
-		$elm$parser$Parser$symbol('*'),
-		$author$project$Main$cyclic$parseExponentiation(),
-		F2(
-			function (l, _v3) {
-				var r = _v3.b;
-				return A2($author$project$Main$Product, l, r);
-			}));
+		$author$project$Expression$parseOperatorSequence,
+		$author$project$Expression$Left,
+		_List_fromArray(
+			[
+				_Utils_Tuple2($author$project$Expression$Product, '*')
+			]),
+		$author$project$Expression$cyclic$parseExponentiation());
 }
-function $author$project$Main$cyclic$parseExponentiation() {
+function $author$project$Expression$cyclic$parseExponentiation() {
 	return A3(
-		$author$project$Main$parseSequence,
-		$elm$parser$Parser$symbol('^'),
-		$author$project$Main$cyclic$parseAtom(),
-		F2(
-			function (l, _v2) {
-				var r = _v2.b;
-				return A2($author$project$Main$Exponentiation, l, r);
-			}));
+		$author$project$Expression$parseOperatorSequence,
+		$author$project$Expression$Right,
+		_List_fromArray(
+			[
+				_Utils_Tuple2($author$project$Expression$Exponentiation, '^')
+			]),
+		$author$project$Expression$cyclic$parseAtom());
 }
-function $author$project$Main$cyclic$parseAtom() {
+function $author$project$Expression$cyclic$parseAtom() {
 	return A2(
 		$elm$parser$Parser$keeper,
 		A2(
@@ -6329,55 +6336,51 @@ function $author$project$Main$cyclic$parseAtom() {
 							$elm$parser$Parser$ignorer,
 							$elm$parser$Parser$lazy(
 								function (_v1) {
-									return $author$project$Main$cyclic$parseAddition();
+									return $author$project$Expression$cyclic$parseAddition();
 								}),
 							$elm$parser$Parser$symbol(')'))),
-						A2($author$project$Main$parseFunction, $author$project$Main$FuncSin, 'sin'),
-						A2($author$project$Main$parseFunction, $author$project$Main$FuncCos, 'cos'),
-						A2($author$project$Main$parseFunction, $author$project$Main$FuncExp, 'exp'),
-						A2($author$project$Main$parseFunction, $author$project$Main$FuncAbs, 'abs'),
+						A2($author$project$Expression$parseFunction, $author$project$Expression$FuncSin, 'sin'),
+						A2($author$project$Expression$parseFunction, $author$project$Expression$FuncCos, 'cos'),
+						A2($author$project$Expression$parseFunction, $author$project$Expression$FuncExp, 'exp'),
+						A2($author$project$Expression$parseFunction, $author$project$Expression$FuncAbs, 'abs'),
 						A2(
 						$elm$parser$Parser$ignorer,
-						$elm$parser$Parser$succeed($author$project$Main$VarX),
+						$elm$parser$Parser$succeed($author$project$Expression$VarX),
 						$elm$parser$Parser$keyword('x')),
 						A2(
 						$elm$parser$Parser$keeper,
-						$elm$parser$Parser$succeed($author$project$Main$ConstValue),
+						$elm$parser$Parser$succeed($author$project$Expression$ConstValue),
 						$elm$parser$Parser$float),
 						A2(
 						$elm$parser$Parser$ignorer,
-						$elm$parser$Parser$succeed($author$project$Main$ConstPi),
+						$elm$parser$Parser$succeed($author$project$Expression$ConstPi),
 						$elm$parser$Parser$keyword('pi'))
 					])),
 			$elm$parser$Parser$spaces));
 }
 try {
-	var $author$project$Main$parseAddition = $author$project$Main$cyclic$parseAddition();
-	$author$project$Main$cyclic$parseAddition = function () {
-		return $author$project$Main$parseAddition;
+	var $author$project$Expression$parseAddition = $author$project$Expression$cyclic$parseAddition();
+	$author$project$Expression$cyclic$parseAddition = function () {
+		return $author$project$Expression$parseAddition;
 	};
-	var $author$project$Main$parseMultiplication = $author$project$Main$cyclic$parseMultiplication();
-	$author$project$Main$cyclic$parseMultiplication = function () {
-		return $author$project$Main$parseMultiplication;
+	var $author$project$Expression$parseMultiplication = $author$project$Expression$cyclic$parseMultiplication();
+	$author$project$Expression$cyclic$parseMultiplication = function () {
+		return $author$project$Expression$parseMultiplication;
 	};
-	var $author$project$Main$parseExponentiation = $author$project$Main$cyclic$parseExponentiation();
-	$author$project$Main$cyclic$parseExponentiation = function () {
-		return $author$project$Main$parseExponentiation;
+	var $author$project$Expression$parseExponentiation = $author$project$Expression$cyclic$parseExponentiation();
+	$author$project$Expression$cyclic$parseExponentiation = function () {
+		return $author$project$Expression$parseExponentiation;
 	};
-	var $author$project$Main$parseAtom = $author$project$Main$cyclic$parseAtom();
-	$author$project$Main$cyclic$parseAtom = function () {
-		return $author$project$Main$parseAtom;
+	var $author$project$Expression$parseAtom = $author$project$Expression$cyclic$parseAtom();
+	$author$project$Expression$cyclic$parseAtom = function () {
+		return $author$project$Expression$parseAtom;
 	};
 } catch ($) {
-	throw 'Some top-level definitions from `Main` are causing infinite recursion:\n\n  ┌─────┐\n  │    parseAddition\n  │     ↓\n  │    parseMultiplication\n  │     ↓\n  │    parseExponentiation\n  │     ↓\n  │    parseAtom\n  │     ↓\n  │    parseFunction\n  └─────┘\n\nThese errors are very tricky, so read https://elm-lang.org/0.19.1/bad-recursion to learn how to fix it!';}
-var $author$project$Main$parser = A2(
+	throw 'Some top-level definitions from `Expression` are causing infinite recursion:\n\n  ┌─────┐\n  │    parseAddition\n  │     ↓\n  │    parseMultiplication\n  │     ↓\n  │    parseExponentiation\n  │     ↓\n  │    parseAtom\n  │     ↓\n  │    parseFunction\n  └─────┘\n\nThese errors are very tricky, so read https://elm-lang.org/0.19.1/bad-recursion to learn how to fix it!';}
+var $author$project$Expression$parser = A2(
 	$elm$parser$Parser$ignorer,
-	A2($elm$parser$Parser$ignorer, $author$project$Main$parseAddition, $elm$parser$Parser$spaces),
+	A2($elm$parser$Parser$ignorer, $author$project$Expression$parseAddition, $elm$parser$Parser$spaces),
 	$elm$parser$Parser$end);
-var $elm$time$Time$posixToMillis = function (_v0) {
-	var millis = _v0.a;
-	return millis;
-};
 var $elm$parser$Parser$DeadEnd = F3(
 	function (row, col, problem) {
 		return {col: col, problem: problem, row: row};
@@ -6437,6 +6440,13 @@ var $elm$parser$Parser$run = F2(
 				A2($elm$core$List$map, $elm$parser$Parser$problemToDeadEnd, problems));
 		}
 	});
+var $author$project$Expression$parse = function (string) {
+	return A2($elm$parser$Parser$run, $author$project$Expression$parser, string);
+};
+var $elm$time$Time$posixToMillis = function (_v0) {
+	var millis = _v0.a;
+	return millis;
+};
 var $elm$url$Url$addPort = F2(
 	function (maybePort, starter) {
 		if (maybePort.$ === 'Nothing') {
@@ -6549,19 +6559,17 @@ var $author$project$Main$update = F2(
 			case 'InputChanged':
 				var newInput = msg.a;
 				var newModel = function () {
-					var _v4 = A2($elm$parser$Parser$run, $author$project$Main$parser, newInput);
+					var _v4 = $author$project$Expression$parse(newInput);
 					if (_v4.$ === 'Err') {
 						var error = _v4.a;
 						return _Utils_update(
 							model,
 							{
-								expressionError: $elm$core$Maybe$Just(
-									$elm$parser$Parser$deadEndsToString(error)),
+								expressionError: $elm$core$Maybe$Just('error'),
 								input: newInput
 							});
 					} else {
 						var expression = _v4.a;
-						var points = $author$project$Main$calculatePoints(expression);
 						return _Utils_update(
 							model,
 							{
@@ -10896,6 +10904,15 @@ var $author$project$Main$view = function (model) {
 	};
 };
 var $author$project$Main$main = $elm$browser$Browser$application(
-	{init: $author$project$Main$init, onUrlChange: $author$project$Main$UrlChanged, onUrlRequest: $author$project$Main$LinkClicked, subscriptions: $author$project$Main$subscriptions, update: $author$project$Main$update, view: $author$project$Main$view});
+	{
+		init: $author$project$Main$init,
+		onUrlChange: $author$project$Main$UrlChanged,
+		onUrlRequest: $author$project$Main$LinkClicked,
+		subscriptions: function (_v0) {
+			return $elm$browser$Browser$Events$onAnimationFrame($author$project$Main$AnimationFrame);
+		},
+		update: $author$project$Main$update,
+		view: $author$project$Main$view
+	});
 _Platform_export({'Main':{'init':$author$project$Main$main(
 	$elm$json$Json$Decode$succeed(_Utils_Tuple0))(0)}});}(this));
