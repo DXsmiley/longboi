@@ -1,6 +1,7 @@
 module Main exposing (..)
 
 import Browser
+import Browser.Dom as Dom
 import Browser.Events
 import Browser.Navigation as Nav
 import Canvas
@@ -10,13 +11,19 @@ import Canvas.Texture exposing (Texture)
 import Color exposing (Color)
 import Css
 import Css.Global
+import Css.Media
 import Expression exposing (Expression(..), FunctionName(..))
-import Html.Styled exposing (Html, button, div, li, p, styled, text, toUnstyled, ul)
+import Html.Lazy
+import Html.Styled exposing (Html, button, div, li, p, styled, text, toUnstyled, ul, span)
 import Html.Styled.Attributes exposing (href, target)
 import Html.Styled.Events exposing (onClick, onInput)
+import Html.Styled.Lazy
 import Maybe
 import Time
 import Url
+import Task
+import Array exposing (Array)
+import Array.Extra as Array
 
 
 main : Program () Model Msg
@@ -25,10 +32,18 @@ main =
         { view = view
         , init = init
         , update = update
-        , subscriptions = \_ -> Browser.Events.onAnimationFrame AnimationFrame
+        , subscriptions = subscriptions
         , onUrlChange = UrlChanged
         , onUrlRequest = LinkClicked
         }
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Sub.batch
+        [ Browser.Events.onAnimationFrame AnimationFrame
+        , Browser.Events.onResize (\x y -> UpdateWindowWidth x)
+        ]
 
 
 type Load a
@@ -37,16 +52,26 @@ type Load a
     | Success a
 
 
+loadMap2 : (a -> b -> c) -> Load a -> Load b -> Load c
+loadMap2 f la lb =
+    case (la, lb) of
+        (Failure, _) -> Failure
+        (_, Failure) -> Failure
+        (Success a, Success b) -> Success (f a b)
+        _ -> Loading
+
+
 type alias Model =
     { input : String
     , parsedExpression : Maybe Expression
     , expressionError : Maybe String
-    , computedValues : List Float
-    , animatedValues : List Float
+    , computedValues : Array Float
+    , animatedValues : Array Float
     , lastFrameTime : Int
     , spriteHead : Load Texture
     , spriteTail : Load Texture
     , smoothEnds : Bool
+    , windowWidth : Int
     }
 
 
@@ -55,12 +80,8 @@ init flags url key =
     let
         initialExpression =
             Product (FunctionCall FuncSin VarX) (ConstValue 20.0)
-    in
-    let
         initialPoints =
             calculatePoints initialExpression True
-    in
-    let
         state =
             { input = "sin x * 20"
             , parsedExpression = Just initialExpression
@@ -71,9 +92,14 @@ init flags url key =
             , spriteHead = Loading
             , spriteTail = Loading
             , smoothEnds = True
+            , windowWidth = 200
             }
     in
-    ( state, Cmd.none )
+    ( state
+    , Dom.getViewport
+      |> Task.perform
+        (\viewport -> UpdateWindowWidth <| round viewport.scene.width)
+    )
 
 
 type Msg
@@ -84,6 +110,7 @@ type Msg
     | TextureLoadedHead (Maybe Texture)
     | TextureLoadedTail (Maybe Texture)
     | SetSmoothing Bool
+    | UpdateWindowWidth Int
 
 
 fWeightedAverage : (Float -> Float) -> (Float -> Float) -> ( Float, Float ) -> Float -> Float
@@ -102,7 +129,7 @@ fWeightedAverage fa fb ( xl, xr ) x =
         fa x * (1 - k) + fb x * k
 
 
-calculatePoints : Expression -> Bool -> List Float
+calculatePoints : Expression -> Bool -> Array Float
 calculatePoints expression smooth =
     let
         smoothRange =
@@ -136,11 +163,10 @@ calculatePoints expression smooth =
             else
                 rawValue x
     in
-    List.range 0 numSamples
-        |> List.map
-            (\s ->
-                smoothValue (toFloat s / toFloat numSamples * toFloat maxValue)
-            )
+    Array.initialize numSamples
+        (\s ->
+            smoothValue (toFloat s / toFloat numSamples * toFloat maxValue)
+        )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -169,6 +195,9 @@ update msg model =
         TextureLoadedHead (Just texture) ->
             ( { model | spriteHead = Success texture }, Cmd.none )
 
+        UpdateWindowWidth width ->
+            ( { model | windowWidth = width }, Cmd.none )
+
         InputChanged newInput ->
             let
                 newModel =
@@ -192,20 +221,28 @@ update msg model =
             ( newModel, Cmd.none )
 
         AnimationFrame time ->
+            -- Attempting to create as few extra objects here as possible
+            -- Array.Extra.map2 resorts to conversions to lists, which is
+            -- pretty bad in that reagrd
             let
                 newPoints =
-                    List.map2
-                        (\cur target ->
-                            (if abs (cur - target) < 0.2 then
+                    Array.indexedMap
+                        (\i cur ->
+                            let
+                                target =
+                                    Array.get i model.computedValues
+                                    |> Maybe.withDefault 0
+                                    |> clamp -2000 2000
+                                diff = abs (cur - target)
+                                sign = if cur < target then -1.0 else 1.0
+                                timeGap = toFloat ((Time.posixToMillis time) - model.lastFrameTime) / 100
+                            in
+                            if diff < 0.2 then
                                 target
-
-                             else
-                                (cur * 9 + target) / 10
-                            )
-                                |> clamp -1000 1000
+                            else
+                                (cur * 9 + target) / 10   
                         )
                         model.animatedValues
-                        model.computedValues
             in
             ( { model
                 | lastFrameTime = time |> Time.posixToMillis
@@ -237,19 +274,21 @@ path1 points =
                 (List.map Canvas.lineTo xr)
 
 
+thiccLine : Float -> Float -> Array Float -> Float -> Float -> Color.Color -> Canvas.Renderable
 thiccLine y l points o1 o2 color =
     let
         pointsOnCanvas =
             (++)
-                (List.indexedMap
+                ( points
+                  |> Array.indexedMap
                     (\i v -> ( l + v + o1, y + 256 + toFloat i * 2 ))
-                    points
+                  |> Array.toList
                 )
-                (List.reverse
-                    (List.indexedMap
-                        (\i v -> ( l + v + o2, y + 256 + toFloat i * 2 ))
-                        points
-                    )
+                ( points
+                  |> Array.indexedMap
+                    (\i v -> ( l + v + o2, y + 256 + toFloat i * 2 ))
+                  |> Array.toList
+                  |> List.reverse
                 )
     in
     Canvas.shapes
@@ -258,26 +297,17 @@ thiccLine y l points o1 o2 color =
 
 
 viewSpriteAt ( x, y ) sprite =
-    case sprite of
-        Loading ->
-            Canvas.shapes [] []
+    Canvas.texture
+        [ Canvas.Settings.Advanced.transform
+            [ Canvas.Settings.Advanced.translate x y
+            , Canvas.Settings.Advanced.scale 0.5 0.5
+            , Canvas.Settings.Advanced.translate -x -y
+            ]
+        ]
+        ( x, y )
+        sprite
 
-        Failure ->
-            Canvas.shapes [] []
-
-        Success sprite1 ->
-            Canvas.texture
-                [ Canvas.Settings.Advanced.transform
-                    [ Canvas.Settings.Advanced.translate x y
-                    , Canvas.Settings.Advanced.scale 0.5 0.5
-                    , Canvas.Settings.Advanced.translate -x -y
-                    ]
-                ]
-                ( x, y )
-                sprite1
-
-
-viewCanvas points spriteHead spriteTail =
+viewCanvas points spriteHead spriteTail w =
     let
         o =
             0
@@ -285,30 +315,20 @@ viewCanvas points spriteHead spriteTail =
         y =
             15
 
-        w =
-            600
-
         h =
             950
 
         x0 =
-            List.head points
+            Array.get 0 points
                 |> Maybe.withDefault 0
                 |> (\x -> x - 133 + (w / 2) - o)
 
         xl =
-            List.head (List.reverse points)
+            Array.get (Array.length points - 1) points
                 |> Maybe.withDefault 0
                 |> (\x -> x - 133 + (w / 2) - o)
     in
-    Canvas.toHtmlWith
-        { width = w
-        , height = h
-        , textures =
-            [ Canvas.Texture.loadFromImageUrl "./public/kita-head.png" TextureLoadedHead
-            , Canvas.Texture.loadFromImageUrl "./public/kita-tail.png" TextureLoadedTail
-            ]
-        }
+    Canvas.toHtml (floor w, h)
         []
         [ Canvas.shapes
             [ Canvas.Settings.fill Color.white ]
@@ -320,178 +340,305 @@ viewCanvas points spriteHead spriteTail =
         , thiccLine y (w / 2 - o) points 0 1 Color.black
         , thiccLine y (w / 2 - o) points 70 71 Color.black
         , viewSpriteAt ( x0, y ) spriteHead
-        , viewSpriteAt ( xl, toFloat <| y + 254 + List.length points * 2 ) spriteTail
+        , viewSpriteAt ( xl, toFloat <| y + 254 + Array.length points * 2 ) spriteTail
+        ]
+
+
+white = Css.rgb 255 255 255
+black = Css.rgb 0 0 0
+blue = Css.rgb 66 188 245
+slateGrey = Css.rgb 47 49 54
+
+
+darkSection : Css.Style
+darkSection =
+    Css.batch
+        [ Css.backgroundColor slateGrey
+        , Css.color white
+        , Css.displayFlex
+        , Css.flexWrap Css.noWrap
+        , Css.flexDirection Css.column
+        , Css.justifyContent Css.center
+        , Css.alignItems Css.center
+        , Css.padding (Css.px 30)
+        ]
+
+
+styleLoadingScreen : Css.Style
+styleLoadingScreen =
+    Css.batch 
+        [ Css.overflow Css.hidden
+        , Css.width (Css.vw 100)
+        , Css.height (Css.vh 100)
+        , Css.backgroundColor slateGrey
+        , Css.color white
+        , Css.displayFlex
+        , Css.justifyContent Css.center
+        , Css.alignItems Css.center
+        ]
+
+
+viewLoadingScreen : Html Msg
+viewLoadingScreen =
+    styled div
+        [ styleLoadingScreen ]
+        []
+        [ p
+            []
+            [ text "Loading..." ]
+        , Canvas.toHtmlWith
+            { width = 0
+            , height = 0
+            , textures =
+                [ Canvas.Texture.loadFromImageUrl "./public/kita-head.png" TextureLoadedHead
+                , Canvas.Texture.loadFromImageUrl "./public/kita-tail.png" TextureLoadedTail
+                ]
+            }
+            []
+            []
+          |> Html.Styled.fromUnstyled
+        ]
+
+
+viewLoadFailure : Html Msg
+viewLoadFailure =
+    styled div
+        [ styleLoadingScreen ]
+        []
+        [ p
+            []
+            [ text "Loading resources failed. Try refreshing the page." ]
+        ]
+
+
+viewHeader : Html Msg
+viewHeader =
+    let
+        links =
+            [ ("Made by Paf", "https://twitter.com/ProbsAFox")
+            , ("Character is Kita", "https://twitter.com/kitacatter")
+            , ("Art by Cianiati", "https://twitter.com/ScribbleServal")
+            , ("Source", "https://github.com/DXsmiley/longboi")
+            ]
+        linksHtml =
+            links
+            |> List.map
+                (\(text, url) ->
+                    styled Html.Styled.a
+                        [ Css.display Css.inlineBlock
+                        , Css.margin2 (Css.px 0) (Css.px 8)
+                        , Css.lineHeight (Css.px 30)
+                        ]
+                        [ href url
+                        , target "_blank"
+                        ]
+                        [ Html.Styled.text text ]
+                )
+            |> div []
+    in
+    styled div
+        [ darkSection
+        , Css.paddingBottom Css.zero
+        ]
+        []
+        [ linksHtml ]
+
+
+viewControls : { expressionError : Maybe String, input : String, smoothEnds : Bool } -> Html Msg
+viewControls { expressionError, input, smoothEnds } =
+    let
+        equationComponent =
+            styled Html.Styled.input
+                [ Css.borderRadius (Css.px 20)
+                , Css.padding2 (Css.px 5) (Css.px 15)
+                , Css.borderStyle Css.solid
+                , Css.borderWidth (Css.px 4)
+                , Css.fontFamily Css.monospace
+                , Css.marginRight (Css.px 10)
+                , Css.marginBottom (Css.px 20)
+                , Css.flexShrink (Css.num 0)
+                , Css.flexGrow (Css.num 1)
+                , Css.letterSpacing (Css.px -1)
+                -- TODo: More informative errors
+                , case expressionError of
+                    Nothing -> Css.borderColor white
+                    Just error -> Css.borderColor (Css.rgb 245 66 120)
+                , Css.focus [ Css.outline Css.none ]
+                ]
+                [ Html.Styled.Attributes.value input
+                , onInput InputChanged
+                ]
+                []
+        smoothEndsComponent =
+            styled div
+                [ Css.flexShrink (Css.num 0)
+                , Css.flexGrow (Css.num 0)
+                , Css.display Css.inlineFlex
+                , Css.alignItems Css.center
+                , Css.flexWrap Css.noWrap
+                , Css.marginBottom (Css.px 20)
+                ]
+                []
+                [ styled div
+                    [ if smoothEnds then
+                        Css.backgroundColor blue
+                      else
+                        Css.backgroundColor white
+                    , Css.flexShrink (Css.num 0)
+                    , Css.flexGrow (Css.num 0)
+                    , Css.width (Css.px 36)
+                    , Css.height (Css.px 36)
+                    , Css.borderRadius (Css.px 18)
+                    , Css.borderWidth (Css.px 7)
+                    , Css.borderStyle Css.solid
+                    , Css.borderColor white
+                    , Css.display Css.inlineBlock
+                    ]
+                    [ onClick (SetSmoothing (not smoothEnds)) ]
+                    []
+                , styled Html.Styled.span
+                    [ Css.marginLeft (Css.px 5)
+                    ]
+                    []
+                    [ text "Smooth Ends" ]
+                ]
+    in
+    styled div
+        [ darkSection
+        , Css.position Css.sticky
+        , Css.top (Css.px 0)
+        , Css.paddingBottom (Css.px 10)
+        ]
+        []
+        [ styled div
+            [ Css.displayFlex
+            , Css.flexDirection Css.rowReverse
+            , Css.flexWrap Css.wrap
+            , Css.alignItems Css.center
+            , Css.justifyContent Css.center
+            ]
+            []
+            [ smoothEndsComponent
+            , equationComponent
+            ]
+        ]
+
+
+viewHelpFooter : Html msg
+viewHelpFooter =
+    let
+        code t =
+            Html.Styled.code [] [ text t ]
+    in
+    styled div
+        [ Css.marginTop (Css.px 30)
+        , darkSection
+        ]
+        []
+        [ styled div
+            [ Css.maxWidth (Css.px 300) ]
+            []
+            [ p []
+                [ text "You can use the variable "
+                , code "x"
+                , text " and the four operators:"
+                ]
+            , ul
+                []
+                [ li [] [ code "+", text " : addition" ]
+                , li [] [ code "-", text " : subtraction" ]
+                , li [] [ code "*", text " : multiplication" ]
+                , li [] [ code "^", text " : exponentiation" ]
+                ]
+            , p [] [ text "Division is non-continuous and therefore you don't get to use it." ]
+            , p [] [ text "The following functions exist" ]
+            , ul
+                []
+                [ li [] [ code "sin" ]
+                , li [] [ code "cos" ]
+                , li [] [ code "exp" ]
+                , li [] [ code "abs" ]
+                ]
+            , p []
+                [ text "The constants "
+                , code "pi"
+                , text " and "
+                , code "e"
+                , text " are also available."
+                ]
+            , p []
+                [ text "Values of "
+                , code "x"
+                , text " range from "
+                , code "0"
+                , text " to "
+                , code "10"
+                , text "."
+                ]
+            ]
         ]
 
 
 view : Model -> Browser.Document Msg
 view model =
     let
-        errorMessages =
-            [ case model.spriteHead of
-                Loading ->
-                    Just "Loading head sprite"
-
-                Failure ->
-                    Just "Failed to load head sprite"
-
-                Success _ ->
-                    Nothing
-            , case model.spriteTail of
-                Loading ->
-                    Just "Loading tail sprite"
-
-                Failure ->
-                    Just "Failed to load head sprite"
-
-                Success _ ->
-                    Nothing
-            , case model.expressionError of
-                Nothing ->
-                    Nothing
-
-                Just error ->
-                    Just "Bad expression :("
-            ]
-                |> List.filterMap identity
+        loadState =
+            loadMap2 (\a b -> (a, b))
+                model.spriteHead
+                model.spriteTail
     in
     let
         body =
-            styled div
-                [ Css.margin2 Css.zero Css.auto
-                , Css.displayFlex
-                , Css.flexDirection Css.column
-                , Css.justifyContent Css.center
-                , Css.alignItems Css.center
-                , Css.flexWrap Css.noWrap
-                ]
-                []
-                [ p
-                    []
-                    [ Html.Styled.a
-                        [ href "https://twitter.com/ProbsAFox"
-                        , target "_blank"
-                        ]
-                        [ text "Code by Paf" ]
-                    , text " | "
-                    , Html.Styled.a
-                        [ href "https://twitter.com/kitacatter"
-                        , target "_blank"
-                        ]
-                        [ text "Character is Kita" ]
-                    , text " | "
-                    , Html.Styled.a
-                        [ href "https://twitter.com/ScribbleServal"
-                        , target "_blank"
-                        ]
-                        [ text "Art by Cianiati" ]
-                    ]
-                , styled div
-                    [ Css.displayFlex
-                    , Css.alignItems Css.center
-                    ]
-                    []
-                    [ styled Html.Styled.input
-                        [ Css.borderRadius (Css.px 20)
-                        , Css.padding2 (Css.px 5) (Css.px 15)
-                        , Css.borderColor (Css.rgb 0 0 0)
-                        , Css.borderStyle Css.solid
-                        , Css.borderWidth (Css.px 2)
-                        , Css.fontFamily Css.monospace
-                        , Css.margin2 Css.zero (Css.px 10)
-                        ]
-                        [ Html.Styled.Attributes.value model.input
-                        , onInput InputChanged
-                        ]
+            case loadState of
+                Failure -> viewLoadFailure
+                Loading -> viewLoadingScreen
+                Success (spriteHead, spriteTail) ->
+                    styled div
                         []
-                    , styled div
-                        [ if model.smoothEnds then
-                            Css.backgroundColor (Css.rgb 0 200 40)
-
-                          else
-                            Css.backgroundColor (Css.rgba 0 0 0 0)
-                        , Css.width (Css.px 30)
-                        , Css.height (Css.px 30)
-                        , Css.borderRadius (Css.px 10)
-                        , Css.borderWidth (Css.px 2)
-                        , Css.borderStyle Css.solid
-                        , Css.borderColor (Css.rgb 0 0 0)
-                        , Css.display Css.inlineBlock
-                        ]
-                        [ onClick (SetSmoothing (not model.smoothEnds)) ]
                         []
-                    , styled Html.Styled.span
-                        [ Css.marginLeft (Css.px 5) ]
-                        []
-                        [ text "Smooth ends" ]
-                    ]
-                , styled p
-                    [ Css.height (Css.px 20)
-                    , Css.margin2 (Css.px 5) Css.zero
-                    ]
-                    []
-                    [ List.head errorMessages |> Maybe.withDefault "" |> text ]
-                , styled div
-                    [ Css.boxShadow5
-                        (Css.px 2)
-                        (Css.px 8)
-                        (Css.px 20)
-                        (Css.px 0)
-                        (Css.rgb 200 200 200)
-                    ]
-                    []
-                    [ viewCanvas model.animatedValues model.spriteHead model.spriteTail
-                        |> Html.Styled.fromUnstyled
-                    ]
-                , let
-                    code t =
-                        Html.Styled.code [] [ text t ]
-                  in
-                  styled div
-                    [ Css.maxWidth (Css.px 200)
-                    , Css.marginTop (Css.px 30)
-                    ]
-                    []
-                    [ p []
-                        [ text "You can use the variable "
-                        , code "x"
-                        , text " and the four operators:"
+                        [ viewHeader
+                        , Html.Styled.Lazy.lazy viewControls
+                            { expressionError = model.expressionError
+                            , input = model.input
+                            , smoothEnds = model.smoothEnds
+                            }
+                        , styled div
+                            [ Css.displayFlex
+                            , Css.justifyContent Css.center
+                            ]
+                            []
+                            [ Html.Lazy.lazy4
+                                viewCanvas
+                                model.animatedValues
+                                spriteHead
+                                spriteTail
+                                (toFloat model.windowWidth)
+                              |> Html.Styled.fromUnstyled
+                            ]
+                        , viewHelpFooter
                         ]
-                    , ul
-                        []
-                        [ li [] [ code "+", text " : addition" ]
-                        , li [] [ code "-", text " : subtraction" ]
-                        , li [] [ code "*", text " : multiplication" ]
-                        , li [] [ code "^", text " : exponentiation" ]
-                        ]
-                    , p [] [ text "Division is non-continuous and therefore you don't get to use it." ]
-                    , p [] [ text "The following functions exist" ]
-                    , ul
-                        []
-                        [ li [] [ code "sin" ]
-                        , li [] [ code "cos" ]
-                        , li [] [ code "exp" ]
-                        , li [] [ code "abs" ]
-                        ]
-                    , p []
-                        [ text "The constants "
-                        , code "pi"
-                        , text " and "
-                        , code "e"
-                        , text " are also available."
-                        ]
-                    ]
-                ]
     in
     { title = "Longboi"
     , body =
         [ Css.Global.global
             [ Css.Global.body
-                [ Css.margin (Css.px 20)
-                , Css.backgroundColor (Css.rgb 255 255 255)
+                [ Css.margin (Css.px 0)
+                , Css.backgroundColor white
+                , Css.overflowX Css.hidden
                 ]
             , Css.Global.everything
                 [ Css.boxSizing Css.borderBox
+                , Css.fontFamilies [ "Roboto" ]
+                , Css.fontSize (Css.em 1.1)
+                ]
+            , Css.Global.code
+                [ Css.fontFamily Css.monospace
+                ]
+            , Css.Global.a
+                [ Css.link [ Css.color white ]
+                , Css.visited [ Css.color white ]
+                , Css.active [ Css.color white ]
+                , Css.hover [ Css.color blue ]
                 ]
             ]
             |> toUnstyled
