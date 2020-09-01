@@ -41,8 +41,8 @@ main =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.batch
-        [ Browser.Events.onAnimationFrame AnimationFrame
-        , Browser.Events.onResize (\x y -> UpdateWindowWidth x)
+        [ Browser.Events.onResize (\x y -> UpdateWindowWidth x)
+        , Browser.Events.onAnimationFrame AnimationFrame
         ]
 
 
@@ -71,7 +71,9 @@ type alias Model =
     , spriteHead : Load Texture
     , spriteTail : Load Texture
     , smoothEnds : Bool
+    , extraLong : Bool
     , windowWidth : Int
+    , requestFrame : Bool
     }
 
 
@@ -81,7 +83,7 @@ init flags url key =
         initialExpression =
             Product (FunctionCall FuncSin VarX) (ConstValue 20.0)
         initialPoints =
-            calculatePoints initialExpression True
+            calculatePoints initialExpression True 10
         state =
             { input = "sin x * 20"
             , parsedExpression = Just initialExpression
@@ -92,7 +94,9 @@ init flags url key =
             , spriteHead = Loading
             , spriteTail = Loading
             , smoothEnds = True
+            , extraLong = False
             , windowWidth = 200
+            , requestFrame = True
             }
     in
     ( state
@@ -110,6 +114,7 @@ type Msg
     | TextureLoadedHead (Maybe Texture)
     | TextureLoadedTail (Maybe Texture)
     | SetSmoothing Bool
+    | SetExtraLong Bool
     | UpdateWindowWidth Int
 
 
@@ -129,17 +134,14 @@ fWeightedAverage fa fb ( xl, xr ) x =
         fa x * (1 - k) + fb x * k
 
 
-calculatePoints : Expression -> Bool -> Array Float
-calculatePoints expression smooth =
+calculatePoints : Expression -> Bool -> Int -> Array Float
+calculatePoints expression smooth maxValue =
     let
         smoothRange =
             1.5
 
-        maxValue =
-            10
-
         numSamples =
-            200
+            maxValue * 20
 
         rawValue : Float -> Float
         rawValue x =
@@ -215,52 +217,75 @@ update msg model =
                                 | input = newInput
                                 , parsedExpression = Just expression
                                 , expressionError = Nothing
-                                , computedValues = calculatePoints expression model.smoothEnds
                             }
+                            |> updateComputedValues
             in
             ( newModel, Cmd.none )
 
         AnimationFrame time ->
-            -- Attempting to create as few extra objects here as possible
-            -- Array.Extra.map2 resorts to conversions to lists, which is
-            -- pretty bad in that reagrd
-            let
-                newPoints =
-                    Array.indexedMap
-                        (\i cur ->
-                            let
-                                target =
-                                    Array.get i model.computedValues
-                                    |> Maybe.withDefault 0
-                                    |> clamp -2000 2000
-                                diff = abs (cur - target)
-                                sign = if cur < target then -1.0 else 1.0
-                                timeGap = toFloat ((Time.posixToMillis time) - model.lastFrameTime) / 100
-                            in
-                            if diff < 0.2 then
-                                target
-                            else
-                                (cur * 9 + target) / 10   
-                        )
-                        model.animatedValues
-            in
-            ( { model
-                | lastFrameTime = time |> Time.posixToMillis
-                , animatedValues = newPoints
-              }
+            -- Ideally this should be moved to the subscriptions function,
+            -- but that was producing some weird behaviour so it's here instead
+            if not model.requestFrame
+            then
+                ( model, Cmd.none )
+            else
+                -- Attempting to create as few extra objects here as possible
+                -- Array.Extra.map2 resorts to conversions to lists, which is
+                -- pretty bad in that reagrd
+                let
+                    newPoints =
+                        Array.initialize (Array.length model.computedValues)
+                            (\i ->
+                                let
+                                    target =
+                                        Array.get i model.computedValues
+                                        |> Maybe.withDefault 0
+                                        |> clamp -2000 2000
+                                    cur =
+                                        Array.get i model.animatedValues
+                                        |> Maybe.withDefault target
+                                    diff = abs (cur - target)
+                                    sign = if cur < target then -1.0 else 1.0
+                                    timeGap = toFloat ((Time.posixToMillis time) - model.lastFrameTime) / 100
+                                in
+                                if diff < 0.2 then
+                                    target
+                                else
+                                    (cur * 9 + target) / 10   
+                            )
+                in
+                ( { model
+                    | lastFrameTime = time |> Time.posixToMillis
+                    , animatedValues = newPoints
+                    , requestFrame = newPoints /= model.computedValues
+                  }
+                , Cmd.none
+                )
+
+        SetSmoothing smooth ->
+            ( { model | smoothEnds = smooth } |> updateComputedValues
             , Cmd.none
             )
 
-        SetSmoothing smooth ->
-            ( { model
-                | smoothEnds = smooth
-                , computedValues =
-                    model.parsedExpression
-                        |> Maybe.map (\e -> calculatePoints e smooth)
-                        |> Maybe.withDefault model.computedValues
-              }
+        SetExtraLong long ->
+            ( { model | extraLong = long } |> updateComputedValues
             , Cmd.none
             )
+
+
+updateComputedValues : Model -> Model
+updateComputedValues model =
+    let
+        maxValue =
+            if model.extraLong then 50 else 10
+    in
+    { model
+    | computedValues =
+        model.parsedExpression
+        |> Maybe.map (\e -> calculatePoints e model.smoothEnds maxValue)
+        |> Maybe.withDefault model.computedValues
+    , requestFrame = True
+    }
 
 
 path1 points =
@@ -316,7 +341,7 @@ viewCanvas points spriteHead spriteTail w =
             15
 
         h =
-            950
+            520 + (Array.length points) * 2
 
         x0 =
             Array.get 0 points
@@ -332,7 +357,7 @@ viewCanvas points spriteHead spriteTail w =
         []
         [ Canvas.shapes
             [ Canvas.Settings.fill Color.white ]
-            [ Canvas.rect ( 0, 0 ) w h ]
+            [ Canvas.rect ( 0, 0 ) w (toFloat h) ]
         , thiccLine y (w / 2 - o) points 0 71 (Color.rgb255 223 188 152)
         , thiccLine y (w / 2 - o) points 0 12 (Color.rgb255 194 141 102)
         , thiccLine y (w / 2 - o) points 42 71 (Color.rgb255 194 141 102)
@@ -356,8 +381,8 @@ darkSection =
         [ Css.backgroundColor slateGrey
         , Css.color white
         , Css.displayFlex
-        , Css.flexWrap Css.noWrap
-        , Css.flexDirection Css.column
+        , Css.flexWrap Css.wrap
+        , Css.flexDirection Css.row
         , Css.justifyContent Css.center
         , Css.alignItems Css.center
         , Css.padding (Css.px 30)
@@ -444,19 +469,23 @@ viewHeader =
         [ linksHtml ]
 
 
-viewControls : { expressionError : Maybe String, input : String, smoothEnds : Bool } -> Html Msg
-viewControls { expressionError, input, smoothEnds } =
+viewEquationComponent : Maybe String -> String -> Html Msg
+viewEquationComponent expressionError input =
     let
-        equationComponent =
+        contents =
             styled Html.Styled.input
                 [ Css.borderRadius (Css.px 20)
                 , Css.padding2 (Css.px 5) (Css.px 15)
                 , Css.borderStyle Css.solid
                 , Css.borderWidth (Css.px 4)
                 , Css.fontFamily Css.monospace
-                , Css.marginRight (Css.px 10)
-                , Css.marginBottom (Css.px 20)
-                , Css.flexShrink (Css.num 0)
+                , Css.marginRight (Css.px 0)
+                , Css.marginBottom (Css.px 0)
+                , Css.maxWidth (Css.px 500)
+                , Css.width (Css.pc 100)
+                , Css.minWidth (Css.px 0)
+                , Css.display Css.inlineBlock
+                , Css.flexShrink (Css.num 1)
                 , Css.flexGrow (Css.num 1)
                 , Css.letterSpacing (Css.px -1)
                 -- TODo: More informative errors
@@ -469,58 +498,63 @@ viewControls { expressionError, input, smoothEnds } =
                 , onInput InputChanged
                 ]
                 []
-        smoothEndsComponent =
-            styled div
-                [ Css.flexShrink (Css.num 0)
-                , Css.flexGrow (Css.num 0)
-                , Css.display Css.inlineFlex
-                , Css.alignItems Css.center
-                , Css.flexWrap Css.noWrap
-                , Css.marginBottom (Css.px 20)
-                ]
-                []
-                [ styled div
-                    [ if smoothEnds then
-                        Css.backgroundColor blue
-                      else
-                        Css.backgroundColor white
-                    , Css.flexShrink (Css.num 0)
-                    , Css.flexGrow (Css.num 0)
-                    , Css.width (Css.px 36)
-                    , Css.height (Css.px 36)
-                    , Css.borderRadius (Css.px 18)
-                    , Css.borderWidth (Css.px 7)
-                    , Css.borderStyle Css.solid
-                    , Css.borderColor white
-                    , Css.display Css.inlineBlock
-                    ]
-                    [ onClick (SetSmoothing (not smoothEnds)) ]
-                    []
-                , styled Html.Styled.span
-                    [ Css.marginLeft (Css.px 5)
-                    ]
-                    []
-                    [ text "Smooth Ends" ]
-                ]
     in
     styled div
         [ darkSection
         , Css.position Css.sticky
         , Css.top (Css.px 0)
-        , Css.paddingBottom (Css.px 10)
         ]
         []
-        [ styled div
-            [ Css.displayFlex
-            , Css.flexDirection Css.rowReverse
-            , Css.flexWrap Css.wrap
-            , Css.alignItems Css.center
-            , Css.justifyContent Css.center
-            ]
-            []
-            [ smoothEndsComponent
-            , equationComponent
-            ]
+        [ contents ]
+
+
+viewToggles : Bool -> Bool -> Html Msg
+viewToggles smoothEnds extraLong =
+    let
+        toggle text_ isOn command =
+            styled div
+                [ Css.flexShrink (Css.num 0)
+                , Css.flexGrow (Css.num 0)
+                , Css.displayFlex
+                , Css.alignItems Css.center
+                , Css.flexWrap Css.noWrap
+                , Css.marginRight (Css.px 10)
+                , Css.marginLeft (Css.px 10)
+                --, Css.marginBottom (Css.px 20)
+                ]
+                []
+                [ styled div
+                    [ if isOn then
+                        Css.backgroundColor blue
+                      else
+                        Css.backgroundColor white
+                    , Css.flexShrink (Css.num 0)
+                    , Css.flexGrow (Css.num 0)
+                    , Css.width (Css.px 30)
+                    , Css.height (Css.px 30)
+                    , Css.borderRadius (Css.px 15)
+                    , Css.borderWidth (Css.px 7)
+                    , Css.borderStyle Css.solid
+                    , Css.borderColor white
+                    , Css.display Css.inlineBlock
+                    ]
+                    [ onClick (command (not isOn)) ]
+                    []
+                , styled Html.Styled.span
+                    [ Css.marginLeft (Css.px 5)
+                    ]
+                    []
+                    [ text text_ ]
+                ]
+    in
+    styled div
+        [ darkSection
+        , Css.paddingBottom (Css.px 0)
+        , Css.flexDirection Css.row
+        ]
+        []
+        [ toggle "Smooth Ends" smoothEnds SetSmoothing
+        , toggle "Extra Long" extraLong SetExtraLong
         ]
 
 
@@ -573,7 +607,11 @@ viewHelpFooter =
                 , code "0"
                 , text " to "
                 , code "10"
-                , text "."
+                , text ", or "
+                , code "0"
+                , text " to "
+                , code "50"
+                , text " in extra long mode."
                 ]
             ]
         ]
@@ -593,15 +631,15 @@ view model =
                 Failure -> viewLoadFailure
                 Loading -> viewLoadingScreen
                 Success (spriteHead, spriteTail) ->
-                    styled div
-                        []
+                    div
                         []
                         [ viewHeader
-                        , Html.Styled.Lazy.lazy viewControls
-                            { expressionError = model.expressionError
-                            , input = model.input
-                            , smoothEnds = model.smoothEnds
-                            }
+                        , Html.Styled.Lazy.lazy2 viewToggles
+                            model.smoothEnds
+                            model.extraLong
+                        , Html.Styled.Lazy.lazy2 viewEquationComponent
+                            model.expressionError
+                            model.input
                         , styled div
                             [ Css.displayFlex
                             , Css.justifyContent Css.center
@@ -624,7 +662,7 @@ view model =
             [ Css.Global.body
                 [ Css.margin (Css.px 0)
                 , Css.backgroundColor white
-                , Css.overflowX Css.hidden
+                --, Css.overflowX Css.visible
                 ]
             , Css.Global.everything
                 [ Css.boxSizing Css.borderBox
