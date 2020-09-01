@@ -237,13 +237,16 @@ update msg model =
                         Array.initialize (Array.length model.computedValues)
                             (\i ->
                                 let
-                                    target =
+                                    compClamped =
                                         Array.get i model.computedValues
-                                        |> Maybe.withDefault 0
-                                        |> clamp -2000 2000
-                                    cur =
-                                        Array.get i model.animatedValues
-                                        |> Maybe.withDefault target
+                                        |> Maybe.map (clamp -2000 2000)
+                                    animaybe = Array.get i model.animatedValues
+                                    (target, cur) =
+                                        case (compClamped, animaybe) of
+                                            (Just c, Just a) -> (c, a)
+                                            (Just c, Nothing) -> (c, c)
+                                            (Nothing, Just a) -> (a, a)
+                                            (Nothing, Nothing) -> (0, 0)
                                     diff = abs (cur - target)
                                     sign = if cur < target then -1.0 else 1.0
                                     timeGap = toFloat ((Time.posixToMillis time) - model.lastFrameTime) / 100
@@ -650,7 +653,7 @@ view model =
                                 model.animatedValues
                                 spriteHead
                                 spriteTail
-                                (toFloat model.windowWidth)
+                                (toFloat model.windowWidth - 30)
                               |> Html.Styled.fromUnstyled
                             ]
                         , viewHelpFooter

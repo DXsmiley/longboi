@@ -6097,6 +6097,16 @@ var $elm$core$Array$length = function (_v0) {
 	return len;
 };
 var $elm$browser$Browser$Navigation$load = _Browser_load;
+var $elm$core$Maybe$map = F2(
+	function (f, maybe) {
+		if (maybe.$ === 'Just') {
+			var value = maybe.a;
+			return $elm$core$Maybe$Just(
+				f(value));
+		} else {
+			return $elm$core$Maybe$Nothing;
+		}
+	});
 var $elm$core$Basics$neq = _Utils_notEqual;
 var $elm$core$Platform$Cmd$batch = _Platform_batch;
 var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
@@ -7007,16 +7017,6 @@ var $elm$url$Url$toString = function (url) {
 					_Utils_ap(http, url.host)),
 				url.path)));
 };
-var $elm$core$Maybe$map = F2(
-	function (f, maybe) {
-		if (maybe.$ === 'Just') {
-			var value = maybe.a;
-			return $elm$core$Maybe$Just(
-				f(value));
-		} else {
-			return $elm$core$Maybe$Nothing;
-		}
-	});
 var $elm$core$Maybe$withDefault = F2(
 	function (_default, maybe) {
 		if (maybe.$ === 'Just') {
@@ -7141,18 +7141,37 @@ var $author$project$Main$update = F2(
 						$elm$core$Array$length(model.computedValues),
 						function (i) {
 							var timeGap = ($elm$time$Time$posixToMillis(time) - model.lastFrameTime) / 100;
-							var target = A3(
-								$elm$core$Basics$clamp,
-								-2000,
-								2000,
-								A2(
-									$elm$core$Maybe$withDefault,
-									0,
-									A2($elm$core$Array$get, i, model.computedValues)));
-							var cur = A2(
-								$elm$core$Maybe$withDefault,
-								target,
-								A2($elm$core$Array$get, i, model.animatedValues));
+							var compClamped = A2(
+								$elm$core$Maybe$map,
+								A2($elm$core$Basics$clamp, -2000, 2000),
+								A2($elm$core$Array$get, i, model.computedValues));
+							var animaybe = A2($elm$core$Array$get, i, model.animatedValues);
+							var _v5 = function () {
+								var _v6 = _Utils_Tuple2(compClamped, animaybe);
+								if (_v6.a.$ === 'Just') {
+									if (_v6.b.$ === 'Just') {
+										var c = _v6.a.a;
+										var a = _v6.b.a;
+										return _Utils_Tuple2(c, a);
+									} else {
+										var c = _v6.a.a;
+										var _v7 = _v6.b;
+										return _Utils_Tuple2(c, c);
+									}
+								} else {
+									if (_v6.b.$ === 'Just') {
+										var _v8 = _v6.a;
+										var a = _v6.b.a;
+										return _Utils_Tuple2(a, a);
+									} else {
+										var _v9 = _v6.a;
+										var _v10 = _v6.b;
+										return _Utils_Tuple2(0, 0);
+									}
+								}
+							}();
+							var target = _v5.a;
+							var cur = _v5.b;
 							var diff = $elm$core$Basics$abs(cur - target);
 							var sign = (_Utils_cmp(cur, target) < 0) ? (-1.0) : 1.0;
 							return (diff < 0.2) ? target : (((cur * 9) + target) / 10);
@@ -11566,7 +11585,7 @@ var $author$project$Main$view = function (model) {
 							_List_fromArray(
 								[
 									$rtfeldman$elm_css$Html$Styled$fromUnstyled(
-									A5($elm$html$Html$Lazy$lazy4, $author$project$Main$viewCanvas, model.animatedValues, spriteHead, spriteTail, model.windowWidth))
+									A5($elm$html$Html$Lazy$lazy4, $author$project$Main$viewCanvas, model.animatedValues, spriteHead, spriteTail, model.windowWidth - 30))
 								])),
 							$author$project$Main$viewHelpFooter
 						]));
